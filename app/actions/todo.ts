@@ -19,9 +19,13 @@ export async function addTodo(_: unknown, formData: FormData): Promise<{ message
       headers: { 'Content-Type': 'application/json' },
     });
     return { message: 'Created' };
-  } catch (error: unknown) {
-    return { message: error.message || 'Failed to create todo' };
+  } catch (error) {
+    if (error instanceof Error) {
+      return { message: error.message };
+    }
+    return { message: 'Failed to create todo' };
   }
+  
 }
 
 
