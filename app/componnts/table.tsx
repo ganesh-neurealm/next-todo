@@ -34,6 +34,7 @@ export const MaterialTable = () => {
         antdMessage.error(res.message || 'Failed to delete todo');
       }
     } catch (error) {
+      console.log("error:", error)
       antdMessage.error('Failed to delete todo');
     }
   };

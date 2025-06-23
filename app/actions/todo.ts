@@ -1,7 +1,6 @@
 'use server';
 
 import type { Todo } from '@/app/types/todo';
-import { revalidatePath } from 'next/cache';
 
 const url = process.env.NEXT_PUBLIC_API_URL;
 export async function getTodos(): Promise<Todo[]> {
