@@ -21,7 +21,7 @@ export default function UpdateTodo() {
   const { id } = useParams<{ id: string }>();
   const { todos } = useTodoStore();
   const [state, formAction] = useActionState(updateTodo, { message: '' });
-  const todo: Todo | undefined = todos.find((t) => t.id === id);
+  const todo: Todo | undefined = todos.find((t) => t.id == id);
 
   useEffect(() => {
     if (state.message === 'Updated') {
