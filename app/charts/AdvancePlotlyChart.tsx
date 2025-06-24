@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import Plot from 'react-plotly.js';
 import { Layout, Config, Data } from 'plotly.js';
-import { Typography, Space, Divider } from 'antd';
+import { Typography, Space, Divider, Select } from 'antd';
 
 const { Title } = Typography;
+const { Option } = Select;
 
 export default function FullChartDashboard() {
   const x = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -18,16 +20,76 @@ export default function FullChartDashboard() {
     [4, 5, 6, 7],
   ];
 
+  const [dragMode, setDragMode] = useState<'zoom' | 'pan' | 'select' | 'lasso' | 'orbit' | 'turntable'>('zoom');
+  const [hoverMode, setHoverMode] = useState<'closest' | 'x' | 'y' | false>('closest');
+  const [fixedRangeX, setFixedRangeX] = useState(false);
+  const [fixedRangeY, setFixedRangeY] = useState(false);
+
   const config: Partial<Config> = {
     responsive: true,
     scrollZoom: true,
     displaylogo: false,
-    modeBarButtonsToRemove: ['select2d', 'lasso2d'],
+    modeBarButtonsToAdd: [
+      'zoomIn2d',
+      'zoomOut2d',
+      'resetScale2d',
+      'autoScale2d',
+      'pan2d',
+      'select2d',
+      'lasso2d',
+      'orbitRotation',
+      'turntableRotation',
+    ],
+    modeBarButtonsToRemove: ['toImage'],
+  };
+
+  const commonLayout: Partial<Layout> = {
+    dragmode: dragMode,
+    hovermode: hoverMode,
+    autosize: true,
   };
 
   return (
     <div className="p-4 max-w-6xl mx-auto">
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space wrap>
+          <Select value={dragMode} onChange={(val) => setDragMode(val)} style={{ width: 160 }}>
+            <Option value="zoom">Zoom</Option>
+            <Option value="pan">Pan</Option>
+            <Option value="select">Select</Option>
+            <Option value="lasso">Lasso Select</Option>
+            <Option value="orbit">Orbit (3D)</Option>
+            <Option value="turntable">Turntable (3D)</Option>
+          </Select>
+
+          <Select value={hoverMode} onChange={(val) => setHoverMode(val)} style={{ width: 160 }}>
+            <Option value="closest">Hover Closest</Option>
+            <Option value="x">Hover X</Option>
+            <Option value="y">Hover Y</Option>
+            <Option value={false}>Hover Off</Option>
+          </Select>
+
+          <Select
+            value={fixedRangeX ? 'fixed' : 'free'}
+            onChange={(val) => setFixedRangeX(val === 'fixed')}
+            style={{ width: 140 }}
+          >
+            <Option value="free">X Zoom Free</Option>
+            <Option value="fixed">X Zoom Fixed</Option>
+          </Select>
+
+          <Select
+            value={fixedRangeY ? 'fixed' : 'free'}
+            onChange={(val) => setFixedRangeY(val === 'fixed')}
+            style={{ width: 140 }}
+          >
+            <Option value="free">Y Zoom Free</Option>
+            <Option value="fixed">Y Zoom Fixed</Option>
+          </Select>
+        </Space>
+
+        <Divider />
+
         <div>
           <Title level={4}>1. Histogram</Title>
           <Plot
@@ -39,17 +101,22 @@ export default function FullChartDashboard() {
                 name: 'X Histogram',
               },
             ] as Data[]}
-            layout={
-              {
-                title: 'Histogram of X',
-                autosize: true,
-                xaxis: { rangeslider: { visible: true }, title: 'X' },
-                yaxis: { title: 'Count' },
-              } as Partial<Layout>
-            }
+            layout={{
+              ...commonLayout,
+              title: 'Histogram of X',
+              xaxis: {
+                rangeslider: { visible: true },
+                title: 'X',
+                fixedrange: fixedRangeX,
+              },
+              yaxis: {
+                title: 'Count',
+                fixedrange: fixedRangeY,
+              },
+            } as Partial<Layout>}
             config={config}
             useResizeHandler
-            style={{ width: '100%', height: '400px' }}
+            style={{ width: '100%', height: 400 }}
           />
         </div>
 
@@ -72,17 +139,22 @@ export default function FullChartDashboard() {
                 name: 'Y vs X',
               },
             ] as Data[]}
-            layout={
-              {
-                title: 'Scatter Plot (X vs Y)',
-                autosize: true,
-                xaxis: { rangeslider: { visible: true }, title: 'X' },
-                yaxis: { title: 'Y' },
-              } as Partial<Layout>
-            }
+            layout={{
+              ...commonLayout,
+              title: 'Scatter Plot (X vs Y)',
+              xaxis: {
+                rangeslider: { visible: true },
+                title: 'X',
+                fixedrange: fixedRangeX,
+              },
+              yaxis: {
+                title: 'Y',
+                fixedrange: fixedRangeY,
+              },
+            } as Partial<Layout>}
             config={config}
             useResizeHandler
-            style={{ width: '100%', height: '400px' }}
+            style={{ width: '100%', height: 400 }}
           />
         </div>
 
@@ -101,17 +173,22 @@ export default function FullChartDashboard() {
                 marker: { color: 'green' },
               },
             ] as Data[]}
-            layout={
-              {
-                title: 'Scatter with Range Slider',
-                xaxis: { rangeslider: { visible: true }, title: 'X' },
-                yaxis: { title: 'Y' },
-                autosize: true,
-              } as Partial<Layout>
-            }
+            layout={{
+              ...commonLayout,
+              title: 'Scatter with Range Slider',
+              xaxis: {
+                rangeslider: { visible: true },
+                title: 'X',
+                fixedrange: fixedRangeX,
+              },
+              yaxis: {
+                title: 'Y',
+                fixedrange: fixedRangeY,
+              },
+            } as Partial<Layout>}
             config={config}
             useResizeHandler
-            style={{ width: '100%', height: '400px' }}
+            style={{ width: '100%', height: 400 }}
           />
         </div>
 
@@ -136,20 +213,18 @@ export default function FullChartDashboard() {
                 name: '3D Points',
               },
             ] as Data[]}
-            layout={
-              {
-                title: '3D Scatter Plot',
-                scene: {
-                  xaxis: { title: 'X' },
-                  yaxis: { title: 'Y' },
-                  zaxis: { title: 'Z' },
-                },
-                autosize: true,
-              } as Partial<Layout>
-            }
+            layout={{
+              ...commonLayout,
+              title: '3D Scatter Plot',
+              scene: {
+                xaxis: { title: 'X' },
+                yaxis: { title: 'Y' },
+                zaxis: { title: 'Z' },
+              },
+            } as Partial<Layout>}
             config={config}
             useResizeHandler
-            style={{ width: '100%', height: '500px' }}
+            style={{ width: '100%', height: 500 }}
           />
         </div>
 
@@ -158,37 +233,33 @@ export default function FullChartDashboard() {
         <div>
           <Title level={4}>5. 3D Surface Plot</Title>
           <Plot
-            data={
-              [
-                {
-                  type: 'surface',
-                  z: surfaceZ,
-                  colorscale: 'YlGnBu',
-                  contours: {
-                    z: {
-                      show: true,
-                      usecolormap: true,
-                      highlightcolor: '#42f462',
-                      project: { z: true },
-                    },
+            data={[
+              {
+                type: 'surface',
+                z: surfaceZ,
+                colorscale: 'YlGnBu',
+                contours: {
+                  z: {
+                    show: true,
+                    usecolormap: true,
+                    highlightcolor: '#42f462',
+                    project: { z: true },
                   },
                 },
-              ] as unknown as Data[]
-            }
-            layout={
-              {
-                title: '3D Surface Plot',
-                scene: {
-                  xaxis: { title: 'X' },
-                  yaxis: { title: 'Y' },
-                  zaxis: { title: 'Z' },
-                },
-                autosize: true,
-              } as Partial<Layout>
-            }
+              },
+            ] as unknown as Data[]}
+            layout={{
+              ...commonLayout,
+              title: '3D Surface Plot',
+              scene: {
+                xaxis: { title: 'X' },
+                yaxis: { title: 'Y' },
+                zaxis: { title: 'Z' },
+              },
+            } as Partial<Layout>}
             config={config}
             useResizeHandler
-            style={{ width: '100%', height: '500px' }}
+            style={{ width: '100%', height: 500 }}
           />
         </div>
       </Space>
