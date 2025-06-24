@@ -18,9 +18,15 @@ export default function FullChartDashboard() {
     [4, 5, 6, 7],
   ];
 
+  const config: Partial<Config> = {
+    responsive: true,
+    scrollZoom: true,
+    displaylogo: false,
+    modeBarButtonsToRemove: ['select2d', 'lasso2d'],
+  };
+
   return (
     <div className="p-4 max-w-6xl mx-auto">
-
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         <div>
           <Title level={4}>1. Histogram</Title>
@@ -33,8 +39,15 @@ export default function FullChartDashboard() {
                 name: 'X Histogram',
               },
             ] as Data[]}
-            layout={{ title: 'Histogram of X', autosize: true } as Partial<Layout>}
-            config={{ responsive: true } as Partial<Config>}
+            layout={
+              {
+                title: 'Histogram of X',
+                autosize: true,
+                xaxis: { rangeslider: { visible: true }, title: 'X' },
+                yaxis: { title: 'Count' },
+              } as Partial<Layout>
+            }
+            config={config}
             useResizeHandler
             style={{ width: '100%', height: '400px' }}
           />
@@ -59,8 +72,15 @@ export default function FullChartDashboard() {
                 name: 'Y vs X',
               },
             ] as Data[]}
-            layout={{ title: 'Scatter Plot (X vs Y)', autosize: true } as Partial<Layout>}
-            config={{ responsive: true } as Partial<Config>}
+            layout={
+              {
+                title: 'Scatter Plot (X vs Y)',
+                autosize: true,
+                xaxis: { rangeslider: { visible: true }, title: 'X' },
+                yaxis: { title: 'Y' },
+              } as Partial<Layout>
+            }
+            config={config}
             useResizeHandler
             style={{ width: '100%', height: '400px' }}
           />
@@ -89,7 +109,7 @@ export default function FullChartDashboard() {
                 autosize: true,
               } as Partial<Layout>
             }
-            config={{ responsive: true } as Partial<Config>}
+            config={config}
             useResizeHandler
             style={{ width: '100%', height: '400px' }}
           />
@@ -127,7 +147,7 @@ export default function FullChartDashboard() {
                 autosize: true,
               } as Partial<Layout>
             }
-            config={{ responsive: true } as Partial<Config>}
+            config={config}
             useResizeHandler
             style={{ width: '100%', height: '500px' }}
           />
@@ -155,8 +175,18 @@ export default function FullChartDashboard() {
                 },
               ] as unknown as Data[]
             }
-            layout={{ title: '3D Surface Plot', autosize: true } as Partial<Layout>}
-            config={{ responsive: true } as Partial<Config>}
+            layout={
+              {
+                title: '3D Surface Plot',
+                scene: {
+                  xaxis: { title: 'X' },
+                  yaxis: { title: 'Y' },
+                  zaxis: { title: 'Z' },
+                },
+                autosize: true,
+              } as Partial<Layout>
+            }
+            config={config}
             useResizeHandler
             style={{ width: '100%', height: '500px' }}
           />
