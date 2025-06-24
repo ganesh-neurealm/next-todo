@@ -1,23 +1,23 @@
 'use client';
-import Plot from 'react-plotly.js';
-import { useTodoStore } from '../store/todo';
+// import Plot from 'react-plotly.js';
+// import { useTodoStore } from '../store/todo';
 import AdvancedPlot from './AdvancePlotlyChart';
 
 export default function ChartsPage() {
-  const { todos } = useTodoStore();
+  // const { todos } = useTodoStore();
 
-  const wordCounts = todos.map((todo) => todo.title.split(' ').length);
+  // const wordCounts = todos.map((todo) => todo.title.split(' ').length);
 
-  const sortedTodos = [...todos]
-    .map((todo) => ({
-      ...todo,
-      createdDate: new Date(todo?.createdDate),
-      wordCount: todo.title.split(' ').length,
-    }))
-    .sort((a, b) => a.createdDate.getTime() - b.createdDate.getTime());
+  // const sortedTodos = [...todos]
+  //   .map((todo) => ({
+  //     ...todo,
+  //     createdDate: new Date(todo?.createdDate),
+  //     wordCount: todo.title.split(' ').length,
+  //   }))
+  //   .sort((a, b) => a.createdDate.getTime() - b.createdDate.getTime());
 
-  const scatterX = sortedTodos.map((todo) => todo?.createdDate?.toISOString());
-  const scatterY = sortedTodos.map((todo) => todo?.wordCount);
+  // const scatterX = sortedTodos.map((todo) => todo?.createdDate?.toISOString());
+  // const scatterY = sortedTodos.map((todo) => todo?.wordCount);
 
   return (
     <div style={{ maxWidth: 700, margin: 'auto', padding: 20 }}>
