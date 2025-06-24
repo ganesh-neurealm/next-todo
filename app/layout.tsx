@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import LayoutComponent from './LayoutComponent';
+import { App as AntdApp } from 'antd';
 
 export const metadata = {
   title: 'Next Todo App',
@@ -10,7 +11,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <LayoutComponent>{children}</LayoutComponent>
+        <AntdApp><LayoutComponent>{children}</LayoutComponent></AntdApp>
       </body>
     </html>
   );

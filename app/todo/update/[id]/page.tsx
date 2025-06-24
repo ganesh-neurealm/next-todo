@@ -12,7 +12,7 @@ import {
   Typography,
   Input,
   Button,
-  message,
+  notification,
 } from 'antd';
 import { useFormStatus } from 'react-dom';
 
@@ -20,26 +20,30 @@ export default function UpdateTodo() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
   const { todos } = useTodoStore();
+  const [api, contextHolder] = notification.useNotification();
   const [state, formAction] = useActionState(updateTodo, { message: '' });
+
   const todo: Todo | undefined = todos.find((t) => t.id == id);
 
   useEffect(() => {
     if (state.message === 'Updated') {
-      message.success('Todo updated successfully');
+      api.success({ message: 'Todo updated successfully' });
       const timeout = setTimeout(() => {
         router.push('/todo');
       }, 800);
       return () => clearTimeout(timeout);
     } else if (state.message && state.message !== 'Updated') {
-      message.error(state.message || 'Failed to update');
+      api.error({ message: state.message || 'Failed to update' });
     }
-  }, [state.message, router]);
+  }, [state.message, api, router]);
 
   if (!todo) return <Typography.Text>Todo not found</Typography.Text>;
 
   return (
     <>
-      <Row justify={"start"} style={{ padding: '16px 24px' }}>
+      {contextHolder}
+
+      <Row justify="start" style={{ padding: '16px 24px' }}>
         <Col>
           <Button type="link" onClick={() => router.back()}>
             ← Back
@@ -81,12 +85,7 @@ export default function UpdateTodo() {
 function SubmitButton() {
   const status = useFormStatus();
   return (
-    <Button
-      type="primary"
-      htmlType="submit"
-      block
-      loading={status.pending}
-    >
+    <Button type="primary" htmlType="submit" block loading={status.pending}>
       {status.pending ? 'Updating...' : 'Update Todo'}
     </Button>
   );
