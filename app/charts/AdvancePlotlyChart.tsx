@@ -38,7 +38,6 @@ export default function FullChartDashboard() {
       'select2d',
       'lasso2d',
       'orbitRotation',
-      'turntableRotation',
     ],
     modeBarButtonsToRemove: ['toImage'],
   };
