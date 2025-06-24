@@ -6,7 +6,7 @@ const url = process.env.NEXT_PUBLIC_API_URL;
 export async function getTodos(): Promise<Todo[]> {
   const res = await fetch(`${url}/todos/`);
   const data = await res.json();
-  return data.map((todo: Todo) => ({ id: todo.id.toString(), title: todo.title }));
+  return data;
 }
 
 export async function addTodo(_: unknown, formData: FormData): Promise<{ message: string }> {
