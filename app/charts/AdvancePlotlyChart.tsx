@@ -42,12 +42,12 @@ export default function ScatterPlot() {
   const [data] = useState(generateData());
   const [modalData, setModalData] = useState<DataPoint | null>(null);
   const plotRef = useRef<Plot | null>(null);
-  
+
   const [layoutState] = useState<Partial<Layout>>({
     dragmode: "zoom",
     hovermode: "closest",
-    xaxis: { title: { text: 'Patient Index' }, range: [0, 1000], automargin: true },
-    yaxis: { title: { text: 'Measurement Value' }, range: [-50, 50], automargin: true },
+    xaxis: { title: { text: "Patient Index" }, range: [0, 1000], automargin: true },
+    yaxis: { title: { text: "Measurement Value" }, range: [-50, 50], automargin: true },
     margin: { t: 10, b: 10, l: 10, r: 10 },
     showlegend: false,
     shapes: [
@@ -80,6 +80,38 @@ export default function ScatterPlot() {
         },
       },
     ],
+    annotations: [
+      {
+        x: 500,
+        y: 40,
+        xref: "x",
+        yref: "y",
+        text: "Upper Limit (40)",
+        showarrow: false,
+        font: {
+          color: "green",
+          size: 12,
+        },
+        xanchor: "right",
+        yanchor: "bottom",
+        bgcolor: "rgba(255,255,255,0.7)",
+      },
+      {
+        x: 500,
+        y: -45,
+        xref: "x",
+        yref: "y",
+        text: "Lower Limit (-45)",
+        showarrow: false,
+        font: {
+          color: "orange",
+          size: 12,
+        },
+        xanchor: "right",
+        yanchor: "top",
+        bgcolor: "rgba(255,255,255,0.7)",
+      },
+    ],
   });
 
   const redData = data.filter((d) => d.valueCheck > 70);
@@ -97,9 +129,7 @@ export default function ScatterPlot() {
       opacity: 0.7,
       line: { color: "gray", width: 1 },
     },
-    text: subset.map(
-      (d) => `<b>${d.name}</b><br>Dosage: ${d.dosage} mg<br>Frequency: ${d.frequency}<br>ValueCheck: ${d.valueCheck}`
-    ),
+    text: subset.map((d) => `<b>${d.name}</b><br>Dosage: ${d.dosage} mg<br>Frequency: ${d.frequency}<br>ValueCheck: ${d.valueCheck}`),
     hoverinfo: "text",
     hoverlabel: {
       bgcolor: "#f9f9f9",
@@ -111,20 +141,19 @@ export default function ScatterPlot() {
   const handleRightClick = (e: PlotMouseEvent) => {
     e.event?.preventDefault();
 
-    if(e.event?.button === 2){
-        const point = e.points?.[0];
+    if (e.event?.button === 2) {
+      const point = e.points?.[0];
 
-        if (point) {
-          const traceIdx = point.curveNumber;
-          const selectedArray = traceIdx === 0 ? redData : blackData;
+      if (point) {
+        const traceIdx = point.curveNumber;
+        const selectedArray = traceIdx === 0 ? redData : blackData;
 
-          if (point.pointIndex !== undefined && selectedArray[point.pointIndex]) {
-            setModalData(selectedArray[point.pointIndex]);
-          }
+        if (point.pointIndex !== undefined && selectedArray[point.pointIndex]) {
+          setModalData(selectedArray[point.pointIndex]);
         }
+      }
     }
   };
-
 
   return (
     <>
@@ -159,20 +188,29 @@ export default function ScatterPlot() {
       <FullChartDashboard />
 
       {modalData && (
-        <Modal
-          open={true}
-          onCancel={() => setModalData(null)}
-          footer={null}
-          title={`Details for ${modalData.name}`}
-        >
+        <Modal open={true} onCancel={() => setModalData(null)} footer={null} title={`Details for ${modalData.name}`}>
           <Space direction="vertical">
-            <div><b>Dosage:</b> {modalData.dosage} mg</div>
-            <div><b>Frequency:</b> {modalData.frequency}</div>
-            <div><b>ValueCheck:</b> {modalData.valueCheck}</div>
-            <div><b>X:</b> {modalData.x.toFixed(2)}</div>
-            <div><b>Y:</b> {modalData.y.toFixed(2)}</div>
-            <div><b>Shape:</b> {modalData.isSquare ? "Square" : "Circle"}</div>
-            <div><b>Color:</b> {modalData.valueCheck > 70 ? "Red" : "Black"}</div>
+            <div>
+              <b>Dosage:</b> {modalData.dosage} mg
+            </div>
+            <div>
+              <b>Frequency:</b> {modalData.frequency}
+            </div>
+            <div>
+              <b>ValueCheck:</b> {modalData.valueCheck}
+            </div>
+            <div>
+              <b>X:</b> {modalData.x.toFixed(2)}
+            </div>
+            <div>
+              <b>Y:</b> {modalData.y.toFixed(2)}
+            </div>
+            <div>
+              <b>Shape:</b> {modalData.isSquare ? "Square" : "Circle"}
+            </div>
+            <div>
+              <b>Color:</b> {modalData.valueCheck > 70 ? "Red" : "Black"}
+            </div>
           </Space>
         </Modal>
       )}
