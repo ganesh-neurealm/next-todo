@@ -1,267 +1,209 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Plot from 'react-plotly.js';
-import { Layout, Config, Data } from 'plotly.js';
-import { Typography, Space, Divider, Select } from 'antd';
+import { Modal, Typography, Space, Button } from 'antd';
 
 const { Title } = Typography;
-const { Option } = Select;
 
-export default function FullChartDashboard() {
-  const x = [1, 2, 3, 4, 5, 6, 7, 8];
-  const y = [2, 4, 1, 8, 6, 3, 5, 7];
-  const z = [1, 3, 5, 2, 4, 6, 8, 7];
+type DataPoint = {
+  id: number;
+  x: number;
+  y: number;
+  name: string;
+  dosage: number;
+  frequency: string;
+  isSquare: boolean;
+  valueCheck: number;
+};
 
-  const surfaceZ = [
-    [1, 2, 3, 4],
-    [2, 3, 4, 5],
-    [3, 4, 5, 6],
-    [4, 5, 6, 7],
-  ];
+function generateRandomData(): DataPoint[] {
+  const data: DataPoint[] = [];
+  for (let i = 0; i < 1000; i++) {
+    const x = Math.random() * 1000;
+    const y = (Math.random() - 0.5) * 100;
+    const valueCheck = Math.floor(Math.random() * 100);
+    const isSquare = Math.random() < 0.1;
+    const dosage = 5 + Math.floor(Math.random() * 495);
+    const frequencies = ['Once a day', 'Twice a day', 'Three times a day', 'As needed'];
+    const frequency = frequencies[Math.floor(Math.random() * frequencies.length)];
+    
+    data.push({
+      id: i,
+      x,
+      y,
+      name: `Patient ${i}`,
+      dosage,
+      frequency,
+      isSquare,
+      valueCheck,
+    });
+  }
+  return data;
+}
 
-  const [dragMode, setDragMode] = useState<'zoom' | 'pan' | 'select' | 'lasso' | 'orbit' | 'turntable'>('zoom');
-  const [hoverMode, setHoverMode] = useState<'closest' | 'x' | 'y' | false>('closest');
-  const [fixedRangeX, setFixedRangeX] = useState(false);
-  const [fixedRangeY, setFixedRangeY] = useState(false);
+export default function ScatterSelectZoom() {
+  const [data] = useState<DataPoint[]>(generateRandomData());
+  const [zoomHistory, setZoomHistory] = useState<Array<{x: number[], y: number[]}>>([]);
+  const [interactionMode, setInteractionMode] = useState<'select' | 'zoom'>('select');
 
-  const config: Partial<Config> = {
-    responsive: true,
-    scrollZoom: true,
-    displaylogo: false,
-    modeBarButtonsToAdd: [
-      'zoomIn2d',
-      'zoomOut2d',
-      'resetScale2d',
-      'autoScale2d',
-      'pan2d',
-      'select2d',
-      'lasso2d',
-      'orbitRotation',
-    ],
-    modeBarButtonsToRemove: ['toImage'],
+  const [layout, setLayout] = useState({
+    dragmode: 'select',
+    hovermode: 'closest',
+    xaxis: { title: 'Patient Index', fixedrange: false, range: [0, 1000] },
+    yaxis: { title: 'Measurement Value', fixedrange: false, zeroline: true, range: [-50, 50] },
+    margin: { t: 30, b: 40, l: 60, r: 30 },
+    showlegend: false,
+  });
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalData, setModalData] = useState<DataPoint | null>(null);
+
+  const markerColors = data.map((d) => (d.valueCheck > 70 ? 'red' : 'black'));
+  const markerSymbols = data.map((d) => (d.isSquare ? 'square' : 'circle'));
+
+  const scatterTrace = {
+    type: 'scatter',
+    mode: 'markers',
+    x: data.map((d) => d.x),
+    y: data.map((d) => d.y),
+    marker: {
+      color: markerColors,
+      symbol: markerSymbols,
+      size: 8,
+      opacity: 0.7,
+      line: { color: 'gray', width: 1 },
+    },
+    text: data.map(
+      (d) =>
+        `<b>${d.name}</b><br>Dosage: ${d.dosage} mg<br>Frequency: ${d.frequency}<br>ValueCheck: ${d.valueCheck}`
+    ),
+    hoverinfo: 'text',
+    selected: {
+      marker: {
+        opacity: 1
+      }
+    },
+    unselected: {
+      marker: {
+        opacity: 0.7
+      }
+    }
   };
 
-  const commonLayout: Partial<Layout> = {
-    dragmode: dragMode,
-    hovermode: hoverMode,
-    autosize: true,
+  const handleSelected = useCallback((event: any) => {
+    if (!event || !event.range) {
+      return;
+    }
+
+    const { x: xRange, y: yRange } = event.range;
+
+    if (xRange && yRange) {
+      setZoomHistory(prev => [...prev, {
+        x: [layout.xaxis.range?.[0] || 0, layout.xaxis.range?.[1] || 1000],
+        y: [layout.yaxis.range?.[0] || -50, layout.yaxis.range?.[1] || 50]
+      }]);
+
+      const xPadding = (xRange[1] - xRange[0]) * 0.1;
+      const yPadding = (xRange[1] - xRange[0]) * 0.1;
+
+      setLayout(prev => ({
+        ...prev,
+        xaxis: { ...prev.xaxis, range: [xRange[0] - xPadding, xRange[1] + xPadding] },
+        yaxis: { ...prev.yaxis, range: [yRange[0] - yPadding, yRange[1] + yPadding] },
+      }));
+
+      setInteractionMode('zoom');
+    }
+  }, [layout]);
+
+  const resetZoom = useCallback(() => {
+    if (zoomHistory.length > 0) {
+      const prevZoom = zoomHistory[zoomHistory.length - 1];
+      setZoomHistory(prev => prev.slice(0, -1));
+      setLayout(prev => ({
+        ...prev,
+        xaxis: { ...prev.xaxis, range: prevZoom.x },
+        yaxis: { ...prev.yaxis, range: prevZoom.y },
+      }));
+    } else {
+      setLayout(prev => ({
+        ...prev,
+        xaxis: { ...prev.xaxis, range: [0, 1000] },
+        yaxis: { ...prev.yaxis, range: [-50, 50] },
+      }));
+    }
+    setInteractionMode('select');
+  }, [zoomHistory]);
+
+  const handleRightClick = useCallback((event: any) => {
+    event.preventDefault();
+    const points = event.points;
+    if (points && points.length > 0) {
+      const idx = points[0].pointIndex;
+      setModalData(data[idx]);
+      setModalOpen(true);
+    }
+  }, [data]);
+
+  const updatedLayout = {
+    ...layout,
+    dragmode: interactionMode,
+    hovermode: 'closest'
   };
 
   return (
-    <div className="p-4 max-w-6xl mx-auto">
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <Space wrap>
-          <Select value={dragMode} onChange={(val) => setDragMode(val)} style={{ width: 160 }}>
-            <Option value="zoom">Zoom</Option>
-            <Option value="pan">Pan</Option>
-            <Option value="select">Select</Option>
-            <Option value="lasso">Lasso Select</Option>
-            <Option value="orbit">Orbit (3D)</Option>
-            <Option value="turntable">Turntable (3D)</Option>
-          </Select>
-
-          <Select value={hoverMode} onChange={(val) => setHoverMode(val)} style={{ width: 160 }}>
-            <Option value="closest">Hover Closest</Option>
-            <Option value="x">Hover X</Option>
-            <Option value="y">Hover Y</Option>
-            <Option value={false}>Hover Off</Option>
-          </Select>
-
-          <Select
-            value={fixedRangeX ? 'fixed' : 'free'}
-            onChange={(val) => setFixedRangeX(val === 'fixed')}
-            style={{ width: 140 }}
-          >
-            <Option value="free">X Zoom Free</Option>
-            <Option value="fixed">X Zoom Fixed</Option>
-          </Select>
-
-          <Select
-            value={fixedRangeY ? 'fixed' : 'free'}
-            onChange={(val) => setFixedRangeY(val === 'fixed')}
-            style={{ width: 140 }}
-          >
-            <Option value="free">Y Zoom Free</Option>
-            <Option value="fixed">Y Zoom Fixed</Option>
-          </Select>
-        </Space>
-
-        <Divider />
-
-        <div>
-          <Title level={4}>1. Histogram</Title>
-          <Plot
-            data={[
-              {
-                type: 'histogram',
-                x,
-                marker: { color: 'rgba(100, 149, 237, 0.7)' },
-                name: 'X Histogram',
-              },
-            ] as Data[]}
-            layout={{
-              ...commonLayout,
-              title: 'Histogram of X',
-              xaxis: {
-                rangeslider: { visible: true },
-                title: 'X',
-                fixedrange: fixedRangeX,
-              },
-              yaxis: {
-                title: 'Count',
-                fixedrange: fixedRangeY,
-              },
-            } as Partial<Layout>}
-            config={config}
-            useResizeHandler
-            style={{ width: '100%', height: 400 }}
-          />
-        </div>
-
-        <Divider />
-
-        <div>
-          <Title level={4}>2. 2D Scatter Plot</Title>
-          <Plot
-            data={[
-              {
-                type: 'scatter',
-                mode: 'markers',
-                x,
-                y,
-                marker: {
-                  color: 'crimson',
-                  size: 10,
-                  line: { color: 'black', width: 1 },
-                },
-                name: 'Y vs X',
-              },
-            ] as Data[]}
-            layout={{
-              ...commonLayout,
-              title: 'Scatter Plot (X vs Y)',
-              xaxis: {
-                rangeslider: { visible: true },
-                title: 'X',
-                fixedrange: fixedRangeX,
-              },
-              yaxis: {
-                title: 'Y',
-                fixedrange: fixedRangeY,
-              },
-            } as Partial<Layout>}
-            config={config}
-            useResizeHandler
-            style={{ width: '100%', height: 400 }}
-          />
-        </div>
-
-        <Divider />
-
-        <div>
-          <Title level={4}>3. Range Slider + Scatter</Title>
-          <Plot
-            data={[
-              {
-                type: 'scatter',
-                mode: 'lines+markers',
-                x,
-                y,
-                name: 'Interactive Data',
-                marker: { color: 'green' },
-              },
-            ] as Data[]}
-            layout={{
-              ...commonLayout,
-              title: 'Scatter with Range Slider',
-              xaxis: {
-                rangeslider: { visible: true },
-                title: 'X',
-                fixedrange: fixedRangeX,
-              },
-              yaxis: {
-                title: 'Y',
-                fixedrange: fixedRangeY,
-              },
-            } as Partial<Layout>}
-            config={config}
-            useResizeHandler
-            style={{ width: '100%', height: 400 }}
-          />
-        </div>
-
-        <Divider />
-
-        <div>
-          <Title level={4}>4. 3D Scatter Plot</Title>
-          <Plot
-            data={[
-              {
-                type: 'scatter3d',
-                mode: 'markers',
-                x,
-                y,
-                z,
-                marker: {
-                  size: 6,
-                  color: z,
-                  colorscale: 'Portland',
-                  opacity: 0.8,
-                },
-                name: '3D Points',
-              },
-            ] as Data[]}
-            layout={{
-              ...commonLayout,
-              title: '3D Scatter Plot',
-              scene: {
-                xaxis: { title: 'X' },
-                yaxis: { title: 'Y' },
-                zaxis: { title: 'Z' },
-              },
-            } as Partial<Layout>}
-            config={config}
-            useResizeHandler
-            style={{ width: '100%', height: 500 }}
-          />
-        </div>
-
-        <Divider />
-
-        <div>
-          <Title level={4}>5. 3D Surface Plot</Title>
-          <Plot
-            data={[
-              {
-                type: 'surface',
-                z: surfaceZ,
-                colorscale: 'YlGnBu',
-                contours: {
-                  z: {
-                    show: true,
-                    usecolormap: true,
-                    highlightcolor: '#42f462',
-                    project: { z: true },
-                  },
-                },
-              },
-            ] as unknown as Data[]}
-            layout={{
-              ...commonLayout,
-              title: '3D Surface Plot',
-              scene: {
-                xaxis: { title: 'X' },
-                yaxis: { title: 'Y' },
-                zaxis: { title: 'Z' },
-              },
-            } as Partial<Layout>}
-            config={config}
-            useResizeHandler
-            style={{ width: '100%', height: 500 }}
-          />
-        </div>
-      </Space>
-    </div>
+    <>
+      <Title level={3} style={{ textAlign: 'center' }}>
+        Interactive Scatter Plot
+      </Title>
+      <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
+        <Button onClick={resetZoom}>
+          {zoomHistory.length > 0 ? 'Back' : 'Reset Zoom'}
+        </Button>
+        <Button onClick={() => setInteractionMode(mode => mode === 'select' ? 'zoom' : 'select')}>
+          {interactionMode === 'select' ? 'Switch to Zoom' : 'Switch to Select'}
+        </Button>
+      </div>
+      <div style={{ width: '100%', height: 600 }}>
+        <Plot
+          data={[scatterTrace]}
+          layout={updatedLayout}
+          config={{ 
+            scrollZoom: true,
+            responsive: true,
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['lasso2d'],
+            displaylogo: false
+          }}
+          style={{ width: '100%', height: '100%' }}
+          useResizeHandler
+          onSelected={interactionMode === 'select' ? handleSelected : undefined}
+          onContextMenu={handleRightClick}
+        />
+      </div>
+      {modalData && (
+        <Modal
+          open={modalOpen}
+          title={`Details for ${modalData.name}`}
+          onCancel={() => setModalOpen(false)}
+          footer={null}
+          width={400}
+        >
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <div><b>Name:</b> {modalData.name}</div>
+            <div><b>Dosage:</b> {modalData.dosage} mg</div>
+            <div><b>Frequency:</b> {modalData.frequency}</div>
+            <div><b>X:</b> {modalData.x.toFixed(2)}</div>
+            <div><b>Y:</b> {modalData.y.toFixed(2)}</div>
+            <div><b>ValueCheck:</b> {modalData.valueCheck}</div>
+            <div><b>Shape:</b> {modalData.isSquare ? 'Square' : 'Circle'}</div>
+            <div>
+              <b>Color:</b> {modalData.valueCheck > 70 ? 'Red (ValueCheck > 70)' : 'Black'}
+            </div>
+          </Space>
+        </Modal>
+      )}
+    </>
   );
 }
