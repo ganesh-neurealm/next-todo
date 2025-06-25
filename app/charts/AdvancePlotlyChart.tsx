@@ -1,135 +1,178 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Plot from "react-plotly.js";
-import { Modal, Typography, Space, Divider } from "antd";
+import { Modal, Typography, Space, Divider, Input, Button, message } from "antd";
 import type { ScatterData, Layout, PlotMouseEvent } from "plotly.js";
 import FullChartDashboard from "./OtherCharts";
+import { fetchPatients, updatePatientComment, DataPoint } from "@/app/actions/patient";
 
 const { Title } = Typography;
-
-type DataPoint = {
-  id: number;
-  x: number;
-  y: number;
-  name: string;
-  dosage: number;
-  frequency: string;
-  isSquare: boolean;
-  valueCheck: number;
-};
-
-const generateData = (): DataPoint[] => {
-  return Array.from({ length: 1000 }, (_, i) => {
-    const x = Math.random() * 1000;
-    const y = (Math.random() - 0.5) * 100;
-    const dosage = 5 + Math.floor(Math.random() * 495);
-    const valueCheck = Math.floor(Math.random() * 100);
-    return {
-      id: i,
-      x,
-      y,
-      dosage,
-      valueCheck,
-      name: `Patient ${i}`,
-      frequency: ["Once a day", "Twice a day", "Three times a day", "As needed"][Math.floor(Math.random() * 4)],
-      isSquare: Math.random() < 0.1,
-    };
-  });
-};
+const { TextArea } = Input;
 
 export default function ScatterPlot() {
-  const [data] = useState(generateData());
+  const [data, setData] = useState<DataPoint[]>([]);
   const [modalData, setModalData] = useState<DataPoint | null>(null);
+  const [commentInput, setCommentInput] = useState("");
   const plotRef = useRef<Plot | null>(null);
 
-  const [layoutState] = useState<Partial<Layout>>({
+  useEffect(() => {
+    fetchPatients()
+      .then((patients) => {
+        const updated = patients.map((p) => ({
+          ...p,
+          hasComment: p.comment?.trim() !== "",
+        }));
+        setData(updated);
+      })
+      .catch(() => message.error("Error fetching patient data"));
+  }, []);
+
+  const minY = Math.min(...data.map((d) => d.y), 0);
+  const maxY = Math.max(...data.map((d) => d.y), 0);
+  const finalMinY = Math.floor(minY - 10);
+  const finalMaxY = Math.ceil(maxY + 10);
+  const maxX = Math.max(...data.map((d) => d.x), 1000);
+
+  const upperLimitValue = 45;
+  const lowerLimitValue = -45;
+  const centerLineValue = 0;
+
+  const layoutState: Partial<Layout> = {
     dragmode: "zoom",
     hovermode: "closest",
-    xaxis: { title: { text: "Patient Index" }, range: [0, 1000], automargin: true },
-    yaxis: { title: { text: "Measurement Value" }, range: [-50, 50], automargin: true },
-    margin: { t: 10, b: 10, l: 10, r: 10 },
+    xaxis: {
+      title: { text: "Patient Index" },
+      range: [0, maxX],
+      automargin: true,
+      showgrid: false,
+      zeroline: false,
+      showline: true,
+      mirror: true,
+      rangeslider: { visible: true },
+    },
+    yaxis: {
+      title: { text: "Measurement Value" },
+      range: [finalMinY, finalMaxY],
+      automargin: true,
+      showgrid: false,
+      zeroline: false,
+      showline: true,
+      mirror: true,
+    },
+    margin: { t: 50, b: 50, l: 50, r: 50 },
     showlegend: false,
-    shapes: [
-      {
-        type: "line",
-        xref: "x",
-        yref: "y",
-        x0: 0,
-        x1: 1000,
-        y0: 40,
-        y1: 40,
-        line: {
-          color: "green",
-          width: 2,
-          dash: "dash",
-        },
-      },
-      {
-        type: "line",
-        xref: "x",
-        yref: "y",
-        x0: 0,
-        x1: 1000,
-        y0: -45,
-        y1: -45,
-        line: {
-          color: "orange",
-          width: 2,
-          dash: "dash",
-        },
-      },
-    ],
-    annotations: [
-      {
-        x: 500,
-        y: 40,
-        xref: "x",
-        yref: "y",
-        text: "Upper Limit (40)",
-        showarrow: false,
-        font: {
-          color: "green",
-          size: 12,
-        },
-        xanchor: "right",
-        yanchor: "bottom",
-        bgcolor: "rgba(255,255,255,0.7)",
-      },
-      {
-        x: 500,
-        y: -45,
-        xref: "x",
-        yref: "y",
-        text: "Lower Limit (-45)",
-        showarrow: false,
-        font: {
-          color: "orange",
-          size: 12,
-        },
-        xanchor: "right",
-        yanchor: "top",
-        bgcolor: "rgba(255,255,255,0.7)",
-      },
-    ],
-  });
+    shapes: data.length
+      ? [
+          {
+            type: "line",
+            xref: "x",
+            yref: "y",
+            x0: 0,
+            x1: maxX,
+            y0: upperLimitValue,
+            y1: upperLimitValue,
+            line: { color: "green", width: 2, dash: "dash" },
+          },
+          {
+            type: "line",
+            xref: "x",
+            yref: "y",
+            x0: 0,
+            x1: maxX,
+            y0: lowerLimitValue,
+            y1: lowerLimitValue,
+            line: { color: "orange", width: 2, dash: "dash" },
+          },
+          {
+            type: "line",
+            xref: "x",
+            yref: "y",
+            x0: 0,
+            x1: maxX,
+            y0: centerLineValue,
+            y1: centerLineValue,
+            line: { color: "blue", width: 1, dash: "dot" },
+          },
+        ]
+      : [],
+    annotations: data.length
+      ? [
+          {
+            x: maxX - 10,
+            y: upperLimitValue,
+            xref: "x",
+            yref: "y",
+            text: "Upper Limit",
+            showarrow: false,
+            font: { color: "green", size: 12 },
+            xanchor: "right",
+            yanchor: "bottom",
+          },
+          {
+            x: maxX - 10,
+            y: upperLimitValue,
+            xref: "x",
+            yref: "y",
+            text: String(upperLimitValue),
+            showarrow: false,
+            font: { color: "green", size: 12, weight: 500 },
+            xanchor: "right",
+            yanchor: "top",
+          },
+          {
+            x: maxX - 10,
+            y: lowerLimitValue + 7,
+            xref: "x",
+            yref: "y",
+            text: "Lower Limit",
+            showarrow: false,
+            font: { color: "orange", size: 12 },
+            xanchor: "right",
+            yanchor: "top",
+          },
+          {
+            x: maxX - 10,
+            y: lowerLimitValue - 5,
+            xref: "x",
+            yref: "y",
+            text: String(lowerLimitValue),
+            showarrow: false,
+            font: { color: "orange", size: 12, weight: 500 },
+            xanchor: "right",
+            yanchor: "bottom",
+          },
+        ]
+      : [],
+  };
 
-  const redData = data.filter((d) => d.valueCheck > 70);
-  const blackData = data.filter((d) => d.valueCheck <= 70);
+  const redData = data.filter((d) => d.valueCheck > 70).sort((a, b) => a.x - b.x);
+  const blackData = data.filter((d) => d.valueCheck <= 70).sort((a, b) => a.x - b.x);
 
   const makeTrace = (subset: DataPoint[], color: string): Partial<ScatterData> => ({
     type: "scatter",
-    mode: "markers",
+    mode: "lines+markers",
     x: subset.map((d) => d.x),
     y: subset.map((d) => d.y),
     marker: {
       color,
-      symbol: subset.map((d) => (d.isSquare ? "square" : "circle")),
-      size: 8,
-      opacity: 0.7,
-      line: { color: "gray", width: 1 },
+      symbol: subset.map((d) =>
+        d.hasComment ? (d.isSquare ? "square-open" : "circle-open") : d.isSquare ? "square" : "circle"
+      ),
+      size: 10,
+      opacity: 0.8,
+      line: {
+        color: subset.map((d) => (d.hasComment ? "blue" : "gray")),
+        width: subset.map((d) => (d.hasComment ? 3 : 1)),
+      },
     },
-    text: subset.map((d) => `<b>${d.name}</b><br>Dosage: ${d.dosage} mg<br>Frequency: ${d.frequency}<br>ValueCheck: ${d.valueCheck}`),
+    line: { width: 1, color, shape: "linear" },
+    text: subset.map(
+      (d) =>
+        `<b>${d.name}</b><br>Dosage: ${d.dosage} mg<br>Frequency: ${d.frequency}<br>ValueCheck: ${d.valueCheck}<br>Comment: ${
+          d.comment || "(none)"
+        }`
+    ),
     hoverinfo: "text",
     hoverlabel: {
       bgcolor: "#f9f9f9",
@@ -140,27 +183,43 @@ export default function ScatterPlot() {
 
   const handleRightClick = (e: PlotMouseEvent) => {
     e.event?.preventDefault();
-
     if (e.event?.button === 2) {
       const point = e.points?.[0];
-
       if (point) {
         const traceIdx = point.curveNumber;
         const selectedArray = traceIdx === 0 ? redData : blackData;
-
         if (point.pointIndex !== undefined && selectedArray[point.pointIndex]) {
           setModalData(selectedArray[point.pointIndex]);
+          setCommentInput(selectedArray[point.pointIndex].comment || "");
         }
       }
     }
   };
 
+  const handleCommentSubmit = async () => {
+    if (!modalData) return;
+    try {
+      const success = await updatePatientComment(modalData.id, commentInput.trim());
+      if (success) {
+        const patients = await fetchPatients();
+        const updated = patients.map((p) => ({
+          ...p,
+          hasComment: p.comment?.trim() !== "",
+        }));
+        setData(updated);
+        setModalData(null);
+        message.success("Comment updated successfully");
+      } else {
+        message.error("Failed to update comment");
+      }
+    } catch {
+      message.error("Error updating comment");
+    }
+  };
+
   return (
     <>
-      <Title level={3} style={{ textAlign: "center" }}>
-        Scatter Plot with Dummy Patient data
-      </Title>
-
+      <Title level={3} style={{ textAlign: "center" }}>Scatter Plot with Patient Data from Server</Title>
       <div onContextMenu={(e) => e.preventDefault()}>
         <Plot
           ref={plotRef}
@@ -178,39 +237,25 @@ export default function ScatterPlot() {
           onClick={handleRightClick}
         />
       </div>
-
       <Space direction="vertical" size="large" style={{ width: "100%" }} />
       <Divider />
-      <Title level={3} style={{ textAlign: "center" }}>
-        Other Charts
-      </Title>
+      <Title level={3} style={{ textAlign: "center" }}>Other Charts</Title>
       <Divider />
       <FullChartDashboard />
-
       {modalData && (
         <Modal open={true} onCancel={() => setModalData(null)} footer={null} title={`Details for ${modalData.name}`}>
-          <Space direction="vertical">
-            <div>
-              <b>Dosage:</b> {modalData.dosage} mg
-            </div>
-            <div>
-              <b>Frequency:</b> {modalData.frequency}
-            </div>
-            <div>
-              <b>ValueCheck:</b> {modalData.valueCheck}
-            </div>
-            <div>
-              <b>X:</b> {modalData.x.toFixed(2)}
-            </div>
-            <div>
-              <b>Y:</b> {modalData.y.toFixed(2)}
-            </div>
-            <div>
-              <b>Shape:</b> {modalData.isSquare ? "Square" : "Circle"}
-            </div>
-            <div>
-              <b>Color:</b> {modalData.valueCheck > 70 ? "Red" : "Black"}
-            </div>
+          <Space direction="vertical" style={{ width: "100%" }}>
+            <div><b>Dosage:</b> {modalData.dosage} mg</div>
+            <div><b>Frequency:</b> {modalData.frequency}</div>
+            <div><b>ValueCheck:</b> {modalData.valueCheck}</div>
+            <div><b>X:</b> {modalData.x.toFixed(2)}</div>
+            <div><b>Y:</b> {modalData.y.toFixed(2)}</div>
+            <div><b>Shape:</b> {modalData.isSquare ? "Square" : "Circle"}</div>
+            <div><b>Color:</b> {modalData.valueCheck > 70 ? "Red" : "Black"}</div>
+            <Divider />
+            <b>Comment:</b>
+            <TextArea rows={4} value={commentInput} onChange={(e) => setCommentInput(e.target.value)} placeholder="Add or update comment here" />
+            <Button type="primary" onClick={handleCommentSubmit} style={{ marginTop: 8 }}>Submit Comment</Button>
           </Space>
         </Modal>
       )}
