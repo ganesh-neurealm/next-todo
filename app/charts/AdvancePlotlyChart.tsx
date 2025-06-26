@@ -33,10 +33,9 @@ export default function ScatterPlot() {
   const finalMinY = Math.floor(minY - 10);
   const finalMaxY = Math.ceil(maxY + 10);
   const maxX = Math.max(...data.map((d) => d.x), 1000);
-
-  const upperLimitValue = 45;
-  const lowerLimitValue = -45;
   const centerLineValue = 0;
+  const upperLimitValue = 55;
+  const lowerLimitValue = -55;
 
   const layoutState: Partial<Layout> = {
     dragmode: "zoom",
@@ -48,7 +47,6 @@ export default function ScatterPlot() {
       showgrid: false,
       zeroline: false,
       showline: true,
-      mirror: true,
       rangeslider: { visible: true },
     },
     yaxis: {
@@ -59,6 +57,7 @@ export default function ScatterPlot() {
       zeroline: false,
       showline: true,
       mirror: true,
+      fixedrange:false
     },
     margin: { t: 50, b: 50, l: 50, r: 50 },
     showlegend: false,
@@ -66,30 +65,30 @@ export default function ScatterPlot() {
       ? [
           {
             type: "line",
-            xref: "x",
+            xref: "paper",
             yref: "y",
             x0: 0,
-            x1: maxX,
+            x1: 1,
             y0: upperLimitValue,
             y1: upperLimitValue,
             line: { color: "green", width: 2, dash: "dash" },
           },
           {
             type: "line",
-            xref: "x",
+            xref: "paper",
             yref: "y",
             x0: 0,
-            x1: maxX,
+            x1: 1,
             y0: lowerLimitValue,
             y1: lowerLimitValue,
             line: { color: "orange", width: 2, dash: "dash" },
           },
           {
             type: "line",
-            xref: "x",
+            xref: "paper",
             yref: "y",
             x0: 0,
-            x1: maxX,
+            x1: 1,
             y0: centerLineValue,
             y1: centerLineValue,
             line: { color: "blue", width: 1, dash: "dot" },
@@ -99,48 +98,103 @@ export default function ScatterPlot() {
     annotations: data.length
       ? [
           {
-            x: maxX - 10,
+            x: 1,
             y: upperLimitValue,
-            xref: "x",
+            xref: "paper",
             yref: "y",
             text: "Upper Limit",
             showarrow: false,
             font: { color: "green", size: 12 },
             xanchor: "right",
             yanchor: "bottom",
+            xshift: -10,
+            yshift: 5,
+            bgcolor: "rgba(255,255,255,0.7)",
           },
           {
-            x: maxX - 10,
+            x: 1,
             y: upperLimitValue,
-            xref: "x",
+            xref: "paper",
             yref: "y",
             text: String(upperLimitValue),
             showarrow: false,
             font: { color: "green", size: 12, weight: 500 },
             xanchor: "right",
             yanchor: "top",
+            xshift: -10,
+            yshift: -5,
+            bgcolor: "rgba(255,255,255,0.7)",
           },
           {
-            x: maxX - 10,
-            y: lowerLimitValue + 7,
-            xref: "x",
+            x: 1,
+            y: lowerLimitValue,
+            xref: "paper",
             yref: "y",
-            text: "Lower Limit",
+            text: String(lowerLimitValue),
             showarrow: false,
             font: { color: "orange", size: 12 },
             xanchor: "right",
             yanchor: "top",
+            xshift: -10,
+            yshift: -5,
+            bgcolor: "rgba(255,255,255,0.7)",
           },
           {
-            x: maxX - 10,
-            y: lowerLimitValue - 5,
-            xref: "x",
+            x: 1,
+            y: lowerLimitValue,
+            xref: "paper",
             yref: "y",
-            text: String(lowerLimitValue),
+            text: "Lower Limit",
             showarrow: false,
             font: { color: "orange", size: 12, weight: 500 },
             xanchor: "right",
             yanchor: "bottom",
+            xshift: -10,
+            yshift: 5,
+            bgcolor: "rgba(255,255,255,0.7)",
+          },
+          {
+            x: 1,
+            y: centerLineValue,
+            xref: "paper",
+            yref: "y",
+            text: `Center Line (${centerLineValue})`,
+            showarrow: false,
+            font: {
+              color: "blue",
+              size: 12,
+            },
+            xanchor: "right",
+            yanchor: "bottom",
+            xshift: -10,
+            yshift: 5,
+            bgcolor: "rgba(255,255,255,0.7)",
+          },
+          {
+            x: 1,
+            y: upperLimitValue,
+            xref: "paper",
+            yref: "y",
+            showarrow: true,
+            arrowhead: 1,
+            arrowsize: 1.5,
+            arrowwidth: 1.5,
+            arrowcolor: "green",
+            ax: -20,
+            ay: 0,
+          },
+          {
+            x: 1,
+            y: lowerLimitValue,
+            xref: "paper",
+            yref: "y",
+            showarrow: true,
+            arrowhead: 1,
+            arrowsize: 1.5,
+            arrowwidth: 1.5,
+            arrowcolor: "orange",
+            ax: -20,
+            ay: 0,
           },
         ]
       : [],
@@ -151,7 +205,7 @@ export default function ScatterPlot() {
 
   const makeTrace = (subset: DataPoint[], color: string): Partial<ScatterData> => ({
     type: "scatter",
-    mode: "lines+markers",
+    mode: "text+lines+markers",
     x: subset.map((d) => d.x),
     y: subset.map((d) => d.y),
     marker: {
@@ -166,8 +220,10 @@ export default function ScatterPlot() {
         width: subset.map((d) => (d.hasComment ? 3 : 1)),
       },
     },
+    text: subset.map((d) => String(d.valueCheck)),
     line: { width: 1, color, shape: "linear" },
-    text: subset.map(
+    textposition: "top center",
+    hovertext: subset.map(
       (d) =>
         `<b>${d.name}</b><br>Dosage: ${d.dosage} mg<br>Frequency: ${d.frequency}<br>ValueCheck: ${d.valueCheck}<br>Comment: ${
           d.comment || "(none)"
@@ -231,6 +287,7 @@ export default function ScatterPlot() {
             displayModeBar: true,
             modeBarButtonsToRemove: ["lasso2d"],
             displaylogo: false,
+            doubleClick:'autosize'
           }}
           style={{ width: "100%", height: 600 }}
           useResizeHandler
