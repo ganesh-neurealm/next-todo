@@ -239,6 +239,7 @@ export default function ScatterPlot() {
 
   const handleRightClick = (e: PlotMouseEvent) => {
     e.event?.preventDefault();
+    e.event?.stopPropagation();
     if (e.event?.button === 2) {
       const point = e.points?.[0];
       if (point) {
