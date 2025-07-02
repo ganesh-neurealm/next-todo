@@ -14,7 +14,19 @@ export default function ScatterPlot() {
   const [data, setData] = useState<DataPoint[]>([]);
   const [modalData, setModalData] = useState<DataPoint | null>(null);
   const [commentInput, setCommentInput] = useState("");
+  const [layoutState, setLayoutState] = useState<Partial<Layout>>({});
   const plotRef = useRef<Plot | null>(null);
+
+  const computeTicks = (data: DataPoint[], range?: [number, number]) => {
+    const filtered = range ? data.filter((d) => d.x >= range[0] && d.x <= range[1]) : data;
+    if (filtered.length === 0) return { tickvals: [], ticktext: [] };
+    const ticksCount = 6;
+    const step = Math.max(1, Math.floor(filtered.length / ticksCount));
+    const selected = filtered.filter((_, i) => i % step === 0);
+    const tickvals = selected.map((d) => d.x);
+    const ticktext = selected.map((d) => new Date(d.date).toLocaleDateString("en-GB"));
+    return { tickvals, ticktext };
+  };
 
   useEffect(() => {
     fetchPatients()
@@ -28,177 +40,177 @@ export default function ScatterPlot() {
       .catch(() => message.error("Error fetching patient data"));
   }, []);
 
-  const minY = Math.min(...data.map((d) => d.y), 0);
-  const maxY = Math.max(...data.map((d) => d.y), 0);
-  const finalMinY = Math.floor(minY - 10);
-  const finalMaxY = Math.ceil(maxY + 10);
-  const maxX = Math.max(...data.map((d) => d.x), 1000);
-  const centerLineValue = 0;
-  const upperLimitValue = 55;
-  const lowerLimitValue = -55;
-
-  const layoutState: Partial<Layout> = {
-    dragmode: "zoom",
-    hovermode: "closest",
-    xaxis: {
-      title: { text: "Patient Index" },
-      range: [0, maxX],
-      automargin: true,
-      showgrid: false,
-      zeroline: false,
-      showline: true,
-      rangeslider: { visible: true },
-    },
-    yaxis: {
-      title: { text: "Measurement Value" },
-      range: [finalMinY, finalMaxY],
-      automargin: true,
-      showgrid: false,
-      zeroline: false,
-      showline: true,
-      mirror: true,
-      fixedrange:false
-    },
-    margin: { t: 50, b: 50, l: 50, r: 50 },
-    showlegend: false,
-    shapes: data.length
-      ? [
-          {
-            type: "line",
-            xref: "paper",
-            yref: "y",
-            x0: 0,
-            x1: 1,
-            y0: upperLimitValue,
-            y1: upperLimitValue,
-            line: { color: "green", width: 2, dash: "dash" },
-          },
-          {
-            type: "line",
-            xref: "paper",
-            yref: "y",
-            x0: 0,
-            x1: 1,
-            y0: lowerLimitValue,
-            y1: lowerLimitValue,
-            line: { color: "orange", width: 2, dash: "dash" },
-          },
-          {
-            type: "line",
-            xref: "paper",
-            yref: "y",
-            x0: 0,
-            x1: 1,
-            y0: centerLineValue,
-            y1: centerLineValue,
-            line: { color: "blue", width: 1, dash: "dot" },
-          },
-        ]
-      : [],
-    annotations: data.length
-      ? [
-          {
-            x: 1,
-            y: upperLimitValue,
-            xref: "paper",
-            yref: "y",
-            text: "Upper Limit",
-            showarrow: false,
-            font: { color: "green", size: 12 },
-            xanchor: "right",
-            yanchor: "bottom",
-            xshift: -10,
-            yshift: 5,
-            bgcolor: "rgba(255,255,255,0.7)",
-          },
-          {
-            x: 1,
-            y: upperLimitValue,
-            xref: "paper",
-            yref: "y",
-            text: String(upperLimitValue),
-            showarrow: false,
-            font: { color: "green", size: 12, weight: 500 },
-            xanchor: "right",
-            yanchor: "top",
-            xshift: -10,
-            yshift: -5,
-            bgcolor: "rgba(255,255,255,0.7)",
-          },
-          {
-            x: 1,
-            y: lowerLimitValue,
-            xref: "paper",
-            yref: "y",
-            text: String(lowerLimitValue),
-            showarrow: false,
-            font: { color: "orange", size: 12 },
-            xanchor: "right",
-            yanchor: "top",
-            xshift: -10,
-            yshift: -5,
-            bgcolor: "rgba(255,255,255,0.7)",
-          },
-          {
-            x: 1,
-            y: lowerLimitValue,
-            xref: "paper",
-            yref: "y",
-            text: "Lower Limit",
-            showarrow: false,
-            font: { color: "orange", size: 12, weight: 500 },
-            xanchor: "right",
-            yanchor: "bottom",
-            xshift: -10,
-            yshift: 5,
-            bgcolor: "rgba(255,255,255,0.7)",
-          },
-          {
-            x: 1,
-            y: centerLineValue,
-            xref: "paper",
-            yref: "y",
-            text: `Center Line (${centerLineValue})`,
-            showarrow: false,
-            font: {
-              color: "blue",
-              size: 12,
-            },
-            xanchor: "right",
-            yanchor: "bottom",
-            xshift: -10,
-            yshift: 5,
-            bgcolor: "rgba(255,255,255,0.7)",
-          },
-          {
-            x: 1,
-            y: upperLimitValue,
-            xref: "paper",
-            yref: "y",
-            showarrow: true,
-            arrowhead: 1,
-            arrowsize: 1.5,
-            arrowwidth: 1.5,
-            arrowcolor: "green",
-            ax: -20,
-            ay: 0,
-          },
-          {
-            x: 1,
-            y: lowerLimitValue,
-            xref: "paper",
-            yref: "y",
-            showarrow: true,
-            arrowhead: 1,
-            arrowsize: 1.5,
-            arrowwidth: 1.5,
-            arrowcolor: "orange",
-            ax: -20,
-            ay: 0,
-          },
-        ]
-      : [],
-  };
+  useEffect(() => {
+    if (data.length === 0) return;
+    const minY = Math.min(...data.map((d) => d.y), 0);
+    const maxY = Math.max(...data.map((d) => d.y), 0);
+    const finalMinY = Math.floor(minY - 10);
+    const finalMaxY = Math.ceil(maxY + 10);
+    const centerLineValue = 0;
+    const upperLimitValue = 55;
+    const lowerLimitValue = -55;
+    const { tickvals, ticktext } = computeTicks(data);
+    setLayoutState({
+      dragmode: "zoom",
+      hovermode: "closest",
+      xaxis: {
+        title: { text: "Date" },
+        type: "linear",
+        tickmode: "array",
+        tickvals,
+        ticktext,
+        tickangle: -45,
+        tickfont: { size: 10 },
+        showgrid: true,
+        showline: true,
+        rangeslider: { visible: true },
+        fixedrange: false,
+      },
+      yaxis: {
+        title: { text: "Measurement Value" },
+        range: [finalMinY, finalMaxY],
+        fixedrange: false,
+        showline: true,
+        mirror: true,
+        showgrid: true,
+        zeroline: false,
+        anchor: "x",
+        domain: [0, 1],
+      },
+      margin: { t: 50, b: 50, l: 0, r: 50 },
+      showlegend: false,
+      shapes: [
+        {
+          type: "line",
+          xref: "paper",
+          yref: "y",
+          x0: 0,
+          x1: 1,
+          y0: upperLimitValue,
+          y1: upperLimitValue,
+          line: { color: "green", width: 2, dash: "dash" },
+        },
+        {
+          type: "line",
+          xref: "paper",
+          yref: "y",
+          x0: 0,
+          x1: 1,
+          y0: lowerLimitValue,
+          y1: lowerLimitValue,
+          line: { color: "orange", width: 2, dash: "dash" },
+        },
+        {
+          type: "line",
+          xref: "paper",
+          yref: "y",
+          x0: 0,
+          x1: 1,
+          y0: centerLineValue,
+          y1: centerLineValue,
+          line: { color: "blue", width: 1, dash: "dot" },
+        },
+      ],
+      annotations: [
+        {
+          x: 1,
+          y: upperLimitValue,
+          xref: "paper",
+          yref: "y",
+          text: "Upper Limit",
+          showarrow: false,
+          font: { color: "green", size: 12 },
+          xanchor: "right",
+          yanchor: "bottom",
+          xshift: -10,
+          yshift: 5,
+          bgcolor: "rgba(255,255,255,0.7)",
+        },
+        {
+          x: 1,
+          y: upperLimitValue,
+          xref: "paper",
+          yref: "y",
+          text: String(upperLimitValue),
+          showarrow: false,
+          font: { color: "green", size: 12, weight: 500 },
+          xanchor: "right",
+          yanchor: "top",
+          xshift: -10,
+          yshift: -5,
+          bgcolor: "rgba(255,255,255,0.7)",
+        },
+        {
+          x: 1,
+          y: lowerLimitValue,
+          xref: "paper",
+          yref: "y",
+          text: String(lowerLimitValue),
+          showarrow: false,
+          font: { color: "orange", size: 12 },
+          xanchor: "right",
+          yanchor: "top",
+          xshift: -10,
+          yshift: -5,
+          bgcolor: "rgba(255,255,255,0.7)",
+        },
+        {
+          x: 1,
+          y: lowerLimitValue,
+          xref: "paper",
+          yref: "y",
+          text: "Lower Limit",
+          showarrow: false,
+          font: { color: "orange", size: 12, weight: 500 },
+          xanchor: "right",
+          yanchor: "bottom",
+          xshift: -10,
+          yshift: 5,
+          bgcolor: "rgba(255,255,255,0.7)",
+        },
+        {
+          x: 1,
+          y: centerLineValue,
+          xref: "paper",
+          yref: "y",
+          text: `Center Line (${centerLineValue})`,
+          showarrow: false,
+          font: { color: "blue", size: 12 },
+          xanchor: "right",
+          yanchor: "bottom",
+          xshift: -10,
+          yshift: 5,
+          bgcolor: "rgba(255,255,255,0.7)",
+        },
+        {
+          x: 1,
+          y: upperLimitValue,
+          xref: "paper",
+          yref: "y",
+          showarrow: true,
+          arrowhead: 1,
+          arrowsize: 1.5,
+          arrowwidth: 1.5,
+          arrowcolor: "green",
+          ax: -20,
+          ay: 0,
+        },
+        {
+          x: 1,
+          y: lowerLimitValue,
+          xref: "paper",
+          yref: "y",
+          showarrow: true,
+          arrowhead: 1,
+          arrowsize: 1.5,
+          arrowwidth: 1.5,
+          arrowcolor: "orange",
+          ax: -20,
+          ay: 0,
+        },
+      ],
+    });
+  }, [data]);
 
   const redData = data.filter((d) => d.valueCheck > 70).sort((a, b) => a.x - b.x);
   const blackData = data.filter((d) => d.valueCheck <= 70).sort((a, b) => a.x - b.x);
@@ -274,6 +286,36 @@ export default function ScatterPlot() {
     }
   };
 
+  const handleRelayout = (event: any) => {
+    if (event["xaxis.range[0]"] && event["xaxis.range[1]"] && data.length) {
+      const minX = event["xaxis.range[0]"];
+      const maxX = event["xaxis.range[1]"];
+      const { tickvals, ticktext } = computeTicks(data, [minX, maxX]);
+      if (tickvals.length === 0) return;
+      setLayoutState((prev) => ({
+        ...prev,
+        xaxis: {
+          ...prev.xaxis,
+          tickmode: "array",
+          tickvals,
+          ticktext,
+        },
+      }));
+    }
+    if (event["xaxis.autorange"] === true && data.length) {
+      const { tickvals, ticktext } = computeTicks(data);
+      setLayoutState((prev) => ({
+        ...prev,
+        xaxis: {
+          ...prev.xaxis,
+          tickmode: "array",
+          tickvals,
+          ticktext,
+        },
+      }));
+    }
+  };
+
   return (
     <>
       <Title level={3} style={{ textAlign: "center" }}>Scatter Plot with Patient Data from Server</Title>
@@ -288,11 +330,12 @@ export default function ScatterPlot() {
             displayModeBar: true,
             modeBarButtonsToRemove: ["lasso2d"],
             displaylogo: false,
-            doubleClick:'autosize'
+            doubleClick: "autosize",
           }}
           style={{ width: "100%", height: 600 }}
           useResizeHandler
           onClick={handleRightClick}
+          onRelayout={handleRelayout}
         />
       </div>
       <Space direction="vertical" size="large" style={{ width: "100%" }} />
@@ -312,7 +355,7 @@ export default function ScatterPlot() {
             <div><b>Color:</b> {modalData.valueCheck > 70 ? "Red" : "Black"}</div>
             <Divider />
             <b>Comment:</b>
-            <TextArea rows={4} value={commentInput} onChange={(e) => setCommentInput(e.target.value)} placeholder="Add or update comment here" />
+            <TextArea rows={4} value={commentInput} onChange={(e) => setCommentInput(e.target.value)} />
             <Button type="primary" onClick={handleCommentSubmit} style={{ marginTop: 8 }}>Submit Comment</Button>
           </Space>
         </Modal>
