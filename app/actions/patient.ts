@@ -1,15 +1,18 @@
 export type DataPoint = {
-    id: number;
-    x: number;
-    y: number;
-    name: string;
-    dosage: number;
-    frequency: string;
-    isSquare: boolean;
-    valueCheck: number;
-    comment: string;
-    hasComment?: boolean;
-  };
+  id: number;
+  x: number;
+  y: number;
+  date: string; 
+  dosage: number;
+  valueCheck: number;
+  name: string;
+  frequency: string;
+  isSquare: boolean;
+  comment: string;
+  createdDate: string;
+  updatedDate: string;
+  hasComment: string | boolean
+};
   
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
   

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Plot from "react-plotly.js";
 import { Modal, Typography, Space, Divider, Input, Button, message } from "antd";
-import type { ScatterData, Layout, PlotMouseEvent } from "plotly.js";
+import type { ScatterData, Layout, PlotMouseEvent, PlotRelayoutEvent } from "plotly.js";
 import FullChartDashboard from "./OtherCharts";
 import { fetchPatients, updatePatientComment, DataPoint } from "@/app/actions/patient";
 
@@ -18,15 +18,26 @@ export default function ScatterPlot() {
   const plotRef = useRef<Plot | null>(null);
 
   const computeTicks = (data: DataPoint[], range?: [number, number]) => {
-    const filtered = range ? data.filter((d) => d.x >= range[0] && d.x <= range[1]) : data;
+    const filtered = range
+      ? data.filter((d) => d.x >= range[0] && d.x <= range[1])
+      : data;
+  
     if (filtered.length === 0) return { tickvals: [], ticktext: [] };
+  
     const ticksCount = 6;
     const step = Math.max(1, Math.floor(filtered.length / ticksCount));
     const selected = filtered.filter((_, i) => i % step === 0);
+  
     const tickvals = selected.map((d) => d.x);
-    const ticktext = selected.map((d) => new Date(d.date).toLocaleDateString("en-GB"));
+    const ticktext = selected.map((d) => {
+      const date = new Date(d.date);
+      return !isNaN(date.getTime()) ? date.toLocaleDateString("en-GB") : "";
+    });
+  
     return { tickvals, ticktext };
   };
+  
+  
 
   useEffect(() => {
     fetchPatients()
@@ -286,7 +297,7 @@ export default function ScatterPlot() {
     }
   };
 
-  const handleRelayout = (event: any) => {
+  const handleRelayout = (event: Partial<PlotRelayoutEvent>) => {
     if (event["xaxis.range[0]"] && event["xaxis.range[1]"] && data.length) {
       const minX = event["xaxis.range[0]"];
       const maxX = event["xaxis.range[1]"];
