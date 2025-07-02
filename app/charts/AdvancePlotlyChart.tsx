@@ -25,7 +25,7 @@ export default function ScatterPlot() {
   
     if (filtered.length === 0) return { tickvals: [], ticktext: [] };
   
-    const ticksCount = 6;
+    const ticksCount = 12;
     const step = Math.max(1, Math.floor(filtered.length / ticksCount));
     const selected = filtered.filter((_, i) => i % step === 0);
   
@@ -91,7 +91,7 @@ export default function ScatterPlot() {
         anchor: "x",
         domain: [0, 1],
       },
-      margin: { t: 50, b: 50, l: 0, r: 50 },
+      margin: { t: 50, b: 50, l: 60, r: 50 },
       showlegend: false,
       shapes: [
         {
