@@ -6,6 +6,7 @@ import { Modal, Typography, Space, Divider, Input, Button, message } from "antd"
 import type { ScatterData, Layout, PlotMouseEvent, PlotRelayoutEvent } from "plotly.js";
 import FullChartDashboard from "./OtherCharts";
 import { fetchPatients, updatePatientComment, DataPoint } from "@/app/actions/patient";
+import CellViabilityPlot from "./LineConnectedChart";
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -76,6 +77,8 @@ export default function ScatterPlot() {
         showline: true,
         rangeslider: { visible: true },
         fixedrange: false,
+        rangemode:"tozero"
+
       },
       yaxis: {
         title: { text: "Measurement Value" },
@@ -298,22 +301,39 @@ export default function ScatterPlot() {
   };
 
   const handleRelayout = (event: Partial<PlotRelayoutEvent>) => {
-    if (event["xaxis.range[0]"] && event["xaxis.range[1]"] && data.length) {
+    if (data.length === 0) return;
+    if (event["xaxis.range[0]"] && event["xaxis.range[1]"]) {
       const minX = event["xaxis.range[0]"];
       const maxX = event["xaxis.range[1]"];
       const { tickvals, ticktext } = computeTicks(data, [minX, maxX]);
-      if (tickvals.length === 0) return;
-      setLayoutState((prev) => ({
-        ...prev,
-        xaxis: {
-          ...prev.xaxis,
-          tickmode: "array",
-          tickvals,
-          ticktext,
-        },
-      }));
+      if (tickvals.length > 0) {
+        setLayoutState((prev) => ({
+          ...prev,
+          xaxis: {
+            ...prev.xaxis,
+            tickmode: "array",
+            tickvals,
+            ticktext,
+          },
+        }));
+      }
     }
-    if (event["xaxis.autorange"] === true && data.length) {
+    if (Array.isArray(event["xaxis.range"])) {
+      const [minX, maxX] = event["xaxis.range"] as [number, number];
+      const { tickvals, ticktext } = computeTicks(data, [minX, maxX]);
+      if (tickvals.length > 0) {
+        setLayoutState((prev) => ({
+          ...prev,
+          xaxis: {
+            ...prev.xaxis,
+            tickmode: "array",
+            tickvals,
+            ticktext,
+          },
+        }));
+      }
+    }
+    if (event["xaxis.autorange"] === true) {
       const { tickvals, ticktext } = computeTicks(data);
       setLayoutState((prev) => ({
         ...prev,
@@ -326,6 +346,7 @@ export default function ScatterPlot() {
       }));
     }
   };
+  
 
   return (
     <>
@@ -336,7 +357,7 @@ export default function ScatterPlot() {
           data={[makeTrace(redData, "red"), makeTrace(blackData, "black")]}
           layout={layoutState}
           config={{
-            scrollZoom: true,
+            scrollZoom: false,
             responsive: true,
             displayModeBar: true,
             modeBarButtonsToRemove: ["lasso2d"],
@@ -351,9 +372,12 @@ export default function ScatterPlot() {
       </div>
       <Space direction="vertical" size="large" style={{ width: "100%" }} />
       <Divider />
+      <CellViabilityPlot/>
       <Title level={3} style={{ textAlign: "center" }}>Other Charts</Title>
       <Divider />
       <FullChartDashboard />
+      <Divider/>
+     
       {modalData && (
         <Modal open={true} onCancel={() => setModalData(null)} footer={null} title={`Details for ${modalData.name}`}>
           <Space direction="vertical" style={{ width: "100%" }}>
