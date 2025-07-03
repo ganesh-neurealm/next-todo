@@ -18,27 +18,28 @@ export default function ScatterPlot() {
   const [layoutState, setLayoutState] = useState<Partial<Layout>>({});
   const plotRef = useRef<Plot | null>(null);
 
+  const [addLineModalOpen, setAddLineModalOpen] = useState(false);
+  const [lineText, setLineText] = useState("");
+  const [linePosition, setLinePosition] = useState<number | null>(null);
+  const [hoverPoints, setHoverPoints] = useState<Partial<ScatterData>[]>([]);
+
   const computeTicks = (data: DataPoint[], range?: [number, number]) => {
-    const filtered = range
-      ? data.filter((d) => d.x >= range[0] && d.x <= range[1])
-      : data;
-  
+    const filtered = range ? data.filter((d) => d.x >= range[0] && d.x <= range[1]) : data;
+
     if (filtered.length === 0) return { tickvals: [], ticktext: [] };
-  
+
     const ticksCount = 12;
     const step = Math.max(1, Math.floor(filtered.length / ticksCount));
     const selected = filtered.filter((_, i) => i % step === 0);
-  
+
     const tickvals = selected.map((d) => d.x);
     const ticktext = selected.map((d) => {
       const date = new Date(d.date);
       return !isNaN(date.getTime()) ? date.toLocaleDateString("en-GB") : "";
     });
-  
+
     return { tickvals, ticktext };
   };
-  
-  
 
   useEffect(() => {
     fetchPatients()
@@ -77,8 +78,7 @@ export default function ScatterPlot() {
         showline: true,
         rangeslider: { visible: true },
         fixedrange: false,
-        rangemode:"tozero"
-
+        rangemode: "tozero",
       },
       yaxis: {
         title: { text: "Measurement Value" },
@@ -236,9 +236,7 @@ export default function ScatterPlot() {
     y: subset.map((d) => d.y),
     marker: {
       color,
-      symbol: subset.map((d) =>
-        d.hasComment ? (d.isSquare ? "square-open" : "circle-open") : d.isSquare ? "square" : "circle"
-      ),
+      symbol: subset.map((d) => (d.hasComment ? (d.isSquare ? "square-open" : "circle-open") : d.isSquare ? "square" : "circle")),
       size: 10,
       opacity: 0.8,
       line: {
@@ -249,12 +247,7 @@ export default function ScatterPlot() {
     text: subset.map((d) => String(d.valueCheck)),
     line: { width: 1, color, shape: "linear" },
     textposition: "top center",
-    hovertext: subset.map(
-      (d) =>
-        `<b>${d.name}</b><br>Dosage: ${d.dosage} mg<br>Frequency: ${d.frequency}<br>ValueCheck: ${d.valueCheck}<br>Comment: ${
-          d.comment || "(none)"
-        }`
-    ),
+    hovertext: subset.map((d) => `<b>${d.name}</b><br>Dosage: ${d.dosage} mg<br>Frequency: ${d.frequency}<br>ValueCheck: ${d.valueCheck}<br>Comment: ${d.comment || "(none)"}`),
     hoverinfo: "text",
     hoverlabel: {
       bgcolor: "#f9f9f9",
@@ -346,15 +339,20 @@ export default function ScatterPlot() {
       }));
     }
   };
-  
 
   return (
     <>
-      <Title level={3} style={{ textAlign: "center" }}>Scatter Plot with Patient Data from Server</Title>
+      <Button type="primary" onClick={() => setAddLineModalOpen(true)} style={{ marginBottom: 16 }}>
+        Add Vertical Line
+      </Button>
+
+      <Title level={3} style={{ textAlign: "center" }}>
+        Scatter Plot with Patient Data from Server
+      </Title>
       <div onContextMenu={(e) => e.preventDefault()}>
         <Plot
           ref={plotRef}
-          data={[makeTrace(redData, "red"), makeTrace(blackData, "black")]}
+          data={[makeTrace(redData, "red"), makeTrace(blackData, "black"), ...hoverPoints]}
           layout={layoutState}
           config={{
             scrollZoom: false,
@@ -372,29 +370,133 @@ export default function ScatterPlot() {
       </div>
       <Space direction="vertical" size="large" style={{ width: "100%" }} />
       <Divider />
-      <CellViabilityPlot/>
-      <Title level={3} style={{ textAlign: "center" }}>Other Charts</Title>
+      <CellViabilityPlot />
+      <Title level={3} style={{ textAlign: "center" }}>
+        Other Charts
+      </Title>
       <Divider />
       <FullChartDashboard />
-      <Divider/>
-     
+      <Divider />
+
       {modalData && (
         <Modal open={true} onCancel={() => setModalData(null)} footer={null} title={`Details for ${modalData.name}`}>
           <Space direction="vertical" style={{ width: "100%" }}>
-            <div><b>Dosage:</b> {modalData.dosage} mg</div>
-            <div><b>Frequency:</b> {modalData.frequency}</div>
-            <div><b>ValueCheck:</b> {modalData.valueCheck}</div>
-            <div><b>X:</b> {modalData.x.toFixed(2)}</div>
-            <div><b>Y:</b> {modalData.y.toFixed(2)}</div>
-            <div><b>Shape:</b> {modalData.isSquare ? "Square" : "Circle"}</div>
-            <div><b>Color:</b> {modalData.valueCheck > 70 ? "Red" : "Black"}</div>
+            <div>
+              <b>Dosage:</b> {modalData.dosage} mg
+            </div>
+            <div>
+              <b>Frequency:</b> {modalData.frequency}
+            </div>
+            <div>
+              <b>ValueCheck:</b> {modalData.valueCheck}
+            </div>
+            <div>
+              <b>X:</b> {modalData.x.toFixed(2)}
+            </div>
+            <div>
+              <b>Y:</b> {modalData.y.toFixed(2)}
+            </div>
+            <div>
+              <b>Shape:</b> {modalData.isSquare ? "Square" : "Circle"}
+            </div>
+            <div>
+              <b>Color:</b> {modalData.valueCheck > 70 ? "Red" : "Black"}
+            </div>
             <Divider />
             <b>Comment:</b>
             <TextArea rows={4} value={commentInput} onChange={(e) => setCommentInput(e.target.value)} />
-            <Button type="primary" onClick={handleCommentSubmit} style={{ marginTop: 8 }}>Submit Comment</Button>
+            <Button type="primary" onClick={handleCommentSubmit} style={{ marginTop: 8 }}>
+              Submit Comment
+            </Button>
           </Space>
         </Modal>
       )}
+
+      <Modal
+        open={addLineModalOpen}
+        onCancel={() => {
+          setAddLineModalOpen(false);
+          setLineText("");
+          setLinePosition(null);
+        }}
+        onOk={() => {
+          if (linePosition !== null && lineText.trim()) {
+            const currentYRange = layoutState.yaxis?.range as [number, number];
+            const yMax = currentYRange?.[1] ?? 100;
+
+            setLayoutState((prev) => ({
+              ...prev,
+              shapes: [
+                ...(prev.shapes || []),
+                {
+                  type: "line",
+                  x0: linePosition,
+                  x1: linePosition,
+                  yref: "paper",
+                  y0: 0,
+                  y1: 1,
+                  line: { color: "purple", dash: "dot", width: 2 },
+                },
+              ],
+              annotations: [
+                ...(prev.annotations || []),
+                {
+                  x: linePosition,
+                  y: 0.97,
+                  xref: "x",
+                  yref: "paper",
+                  text: String(linePosition),
+                  showarrow: true,
+                  arrowhead: 2,
+                  arrowsize: 1,
+                  arrowcolor: "purple",
+                  ax: 0,
+                  ay: -20,
+                  font: { color: "purple", size: 12 },
+                },
+              ],
+            }));
+            setHoverPoints((prev) => [
+              ...prev,
+              {
+                x: [linePosition],
+                y: [yMax],
+                type: "scatter",
+                mode: "markers",
+                marker: {
+                  color: "rgba(0, 0, 0, 0.01)",
+                  size: 14,
+                  symbol: "circle",
+                },
+                hovertext: lineText.trim(),
+                hoverinfo: "text",
+                showlegend: false,
+              },
+            ]);
+            
+            
+
+            setAddLineModalOpen(false);
+            setLineText("");
+            setLinePosition(null);
+          } else {
+            message.warning("Please enter both text and a valid position.");
+          }
+        }}
+        title="Add Vertical Line"
+      >
+        <Space direction="vertical" style={{ width: "100%" }}>
+          <Input placeholder="Enter tooltip text" value={lineText} onChange={(e) => setLineText(e.target.value)} />
+          <Input
+            placeholder="Enter X position (numeric)"
+            value={linePosition ?? ""}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value);
+              setLinePosition(isNaN(val) ? null : val);
+            }}
+          />
+        </Space>
+      </Modal>
     </>
   );
 }
