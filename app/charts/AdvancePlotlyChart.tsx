@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Plot from "react-plotly.js";
 import { Modal, Typography, Space, Divider, Input, Button, message } from "antd";
 import type { ScatterData, Layout, PlotMouseEvent, PlotRelayoutEvent } from "plotly.js";
 import FullChartDashboard from "./OtherCharts";
 import { fetchPatients, updatePatientComment, DataPoint } from "@/app/actions/patient";
 import CellViabilityPlot from "./LineConnectedChart";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -22,6 +24,40 @@ export default function ScatterPlot() {
   const [lineText, setLineText] = useState("");
   const [linePosition, setLinePosition] = useState<number | null>(null);
   const [hoverPoints, setHoverPoints] = useState<Partial<ScatterData>[]>([]);
+
+  const [break1, setBreak1] = useState<number | null>(null);
+  const [break2, setBreak2] = useState<number | null>(null);
+  const chartWrapperRef = useRef<HTMLDivElement>(null);
+
+  const handleDownloadPDF = async () => {
+    const chartElement = chartWrapperRef.current;
+    if (!chartElement) {
+      message.error("Chart not found");
+      return;
+    }
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 500)); // wait for render
+      const canvas = await html2canvas(chartElement, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "px",
+        format: [canvas.width, canvas.height],
+      });
+
+      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+      pdf.save("scatter_chart.pdf");
+    } catch (err) {
+      console.error("PDF generation failed", err);
+      message.error("Failed to generate PDF");
+    }
+  };
 
   const computeTicks = (data: DataPoint[], range?: [number, number]) => {
     const filtered = range ? data.filter((d) => d.x >= range[0] && d.x <= range[1]) : data;
@@ -229,6 +265,8 @@ export default function ScatterPlot() {
   const redData = data.filter((d) => d.valueCheck > 70).sort((a, b) => a.x - b.x);
   const blackData = data.filter((d) => d.valueCheck <= 70).sort((a, b) => a.x - b.x);
 
+  const memoizedLayout = useMemo(() => layoutState, [layoutState]);
+
   const makeTrace = (subset: DataPoint[], color: string): Partial<ScatterData> => ({
     type: "scatter",
     mode: "text+lines+markers",
@@ -345,15 +383,17 @@ export default function ScatterPlot() {
       <Button type="primary" onClick={() => setAddLineModalOpen(true)} style={{ marginBottom: 16 }}>
         Add Vertical Line
       </Button>
-
+      <Button type="default" onClick={handleDownloadPDF} style={{ marginBottom: 16, marginLeft: 8 }}>
+        Download Chart as PDF
+      </Button>
       <Title level={3} style={{ textAlign: "center" }}>
         Scatter Plot with Patient Data from Server
       </Title>
-      <div onContextMenu={(e) => e.preventDefault()}>
+      <div onContextMenu={(e) => e.preventDefault()} ref={chartWrapperRef}>
         <Plot
           ref={plotRef}
           data={[makeTrace(redData, "red"), makeTrace(blackData, "black"), ...hoverPoints]}
-          layout={layoutState}
+          layout={memoizedLayout}
           config={{
             scrollZoom: false,
             responsive: true,
@@ -420,14 +460,57 @@ export default function ScatterPlot() {
           setLinePosition(null);
         }}
         onOk={() => {
-          if (linePosition !== null && lineText.trim()) {
+          if (linePosition !== null && lineText.trim() && break1 !== null && break2 !== null) {
+            const breaks = [break1, break2].sort((a, b) => a - b);
             const currentYRange = layoutState.yaxis?.range as [number, number];
             const yMax = currentYRange?.[1] ?? 100;
-
+            const sectionLines: Partial<Plotly.Shape>[] = [];
+            for (let i = 0; i < breaks.length; i++) {
+              const x0 = i === 0 ? 0 : breaks[i - 1];
+              const x1 = breaks[i];
+              sectionLines.push(
+                {
+                  type: "line",
+                  x0,
+                  x1,
+                  y0: 60,
+                  y1: 60,
+                  line: { color: "green", dash: "dash", width: 1 },
+                },
+                {
+                  type: "line",
+                  x0,
+                  x1,
+                  y0: -60,
+                  y1: -60,
+                  line: { color: "orange", dash: "dash", width: 1 },
+                },
+                {
+                  type: "line",
+                  x0,
+                  x1,
+                  y0: 0,
+                  y1: 0,
+                  line: { color: "blue", dash: "dot", width: 1 },
+                },
+                {
+                  type: "line",
+                  x0: x1,
+                  x1: x1,
+                  yref: "paper",
+                  y0: 0,
+                  y1: 1,
+                  line: { color: "gray", width: 2, dash: "dot" },
+                }
+              );
+            }
+            const cleanedShapes = (layoutState.shapes || []).filter(
+              (s) => typeof s !== "undefined" && !(s.line?.color === "green" || s.line?.color === "orange" || s.line?.color === "blue" || s.line?.color === "gray")
+            );
             setLayoutState((prev) => ({
               ...prev,
               shapes: [
-                ...(prev.shapes || []),
+                ...cleanedShapes,
                 {
                   type: "line",
                   x0: linePosition,
@@ -437,6 +520,7 @@ export default function ScatterPlot() {
                   y1: 1,
                   line: { color: "purple", dash: "dot", width: 2 },
                 },
+                ...sectionLines,
               ],
               annotations: [
                 ...(prev.annotations || []),
@@ -473,14 +557,11 @@ export default function ScatterPlot() {
                 showlegend: false,
               },
             ]);
-            
-            
-
             setAddLineModalOpen(false);
             setLineText("");
             setLinePosition(null);
           } else {
-            message.warning("Please enter both text and a valid position.");
+            message.warning("Please fill in all fields correctly.");
           }
         }}
         title="Add Vertical Line"
@@ -493,6 +574,26 @@ export default function ScatterPlot() {
             onChange={(e) => {
               const val = parseFloat(e.target.value);
               setLinePosition(isNaN(val) ? null : val);
+            }}
+          />
+
+          <Title level={5}>Breakpoints (numeric)</Title>
+          <Input
+            placeholder="Enter Breakpoint 1"
+            value={break1 ?? ""}
+            type="number"
+            onChange={(e) => {
+              const val = parseFloat(e.target.value);
+              setBreak1(isNaN(val) ? null : val);
+            }}
+          />
+          <Input
+            placeholder="Enter Breakpoint 2"
+            value={break2 ?? ""}
+            type="number"
+            onChange={(e) => {
+              const val = parseFloat(e.target.value);
+              setBreak2(isNaN(val) ? null : val);
             }}
           />
         </Space>
