@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import Plot from "react-plotly.js";
-import { Modal, Typography, Space, Divider, Input, Button, message } from "antd";
+import { Modal, Typography, Space, Divider, Input, Button, message, Spin } from "antd";
 import type { ScatterData, Layout, PlotMouseEvent, PlotRelayoutEvent } from "plotly.js";
 import FullChartDashboard from "./OtherCharts";
 import { fetchPatients, updatePatientComment, DataPoint } from "@/app/actions/patient";
@@ -24,41 +24,44 @@ export default function ScatterPlot() {
   const [lineText, setLineText] = useState("");
   const [linePosition, setLinePosition] = useState<number | null>(null);
   const [hoverPoints, setHoverPoints] = useState<Partial<ScatterData>[]>([]);
+  const [downloading, setDownloading] = useState(false);
 
   const [break1, setBreak1] = useState<number | null>(null);
   const [break2, setBreak2] = useState<number | null>(null);
   const chartWrapperRef = useRef<HTMLDivElement>(null);
-
   const handleDownloadPDF = async () => {
     const chartElement = chartWrapperRef.current;
     if (!chartElement) {
       message.error("Chart not found");
       return;
     }
-
+  
+    setDownloading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500)); // wait for render
+      await new Promise((resolve) => setTimeout(resolve, 500)); // wait for chart render
       const canvas = await html2canvas(chartElement, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
       });
-
+  
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF({
         orientation: "landscape",
         unit: "px",
         format: [canvas.width, canvas.height],
       });
-
+  
       pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
       pdf.save("scatter_chart.pdf");
     } catch (err) {
       console.error("PDF generation failed", err);
       message.error("Failed to generate PDF");
+    } finally {
+      setDownloading(false);
     }
   };
-
+  
   const computeTicks = (data: DataPoint[], range?: [number, number]) => {
     const filtered = range ? data.filter((d) => d.x >= range[0] && d.x <= range[1]) : data;
 
@@ -389,25 +392,28 @@ export default function ScatterPlot() {
       <Title level={3} style={{ textAlign: "center" }}>
         Scatter Plot with Patient Data from Server
       </Title>
-      <div onContextMenu={(e) => e.preventDefault()} ref={chartWrapperRef}>
-        <Plot
-          ref={plotRef}
-          data={[makeTrace(redData, "red"), makeTrace(blackData, "black"), ...hoverPoints]}
-          layout={memoizedLayout}
-          config={{
-            scrollZoom: false,
-            responsive: true,
-            displayModeBar: true,
-            modeBarButtonsToRemove: ["lasso2d"],
-            displaylogo: false,
-            doubleClick: "autosize",
-          }}
-          style={{ width: "100%", height: 600 }}
-          useResizeHandler
-          onClick={handleRightClick}
-          onRelayout={handleRelayout}
-        />
-      </div>
+      <Spin spinning={downloading} tip="Generating PDF...">
+        <div onContextMenu={(e) => e.preventDefault()} ref={chartWrapperRef}>
+          <Plot
+            ref={plotRef}
+            data={[makeTrace(redData, "red"), makeTrace(blackData, "black"), ...hoverPoints]}
+            layout={memoizedLayout}
+            config={{
+              scrollZoom: false,
+              responsive: true,
+              displayModeBar: true,
+              modeBarButtonsToRemove: ["lasso2d"],
+              displaylogo: false,
+              doubleClick: "autosize",
+            }}
+            style={{ width: "100%", height: 600 }}
+            useResizeHandler
+            onClick={handleRightClick}
+            onRelayout={handleRelayout}
+          />
+        </div>
+      </Spin>
+
       <Space direction="vertical" size="large" style={{ width: "100%" }} />
       <Divider />
       <CellViabilityPlot />
